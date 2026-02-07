@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.40"
+    }
+  }
+}
+
 provider "aws" {
   region = "us-east-1"
 }
@@ -43,7 +52,7 @@ module "eks" {
       desired_size   = 2
       min_size       = 1
       max_size       = 2
-      instance_types = ["t3.micro"]   # minimum safe
+      instance_types = ["t3.micro"]
     }
   }
 }
