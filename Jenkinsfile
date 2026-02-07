@@ -3,8 +3,8 @@ pipeline {
 
   environment {
     DOCKER_USER = "naveen656"
-    AWS_DEFAULT_REGION = "us-east-1"
-    CLUSTER_NAME = "student-eks"
+    EC2_HOST = "your-ec2-ip-or-hostname"
+    EC2_USER = "ec2-user"
   }
 
   stages {
@@ -41,47 +41,25 @@ pipeline {
       }
     }
 
-    stage('Terraform Init & Apply') {
+    stage('Deploy to EC2') {
       steps {
-        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',
-          credentialsId: 'aws-access']]) {
+        withCredentials([sshUserPrivateKey(
+          credentialsId: 'ec2-ssh-key',
+          keyFileVariable: 'SSH_KEY'
+        )]) {
           sh '''
-            cd terraform
-            terraform init
-            terraform apply -auto-approve
+            ssh -i $SSH_KEY -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST << 'EOF'
+              docker pull $DOCKER_USER/student-backend:latest
+              docker pull $DOCKER_USER/student-frontend:latest
+              docker stop backend-container || true
+              docker stop frontend-container || true
+              docker rm backend-container || true
+              docker rm frontend-container || true
+              docker run -d --name backend-container -p 5000:5000 $DOCKER_USER/student-backend:latest
+              docker run -d --name frontend-container -p 80:80 $DOCKER_USER/student-frontend:latest
+            EOF
           '''
         }
-      }
-    }
-
-    stage('Update kubeconfig') {
-      steps {
-        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',
-          credentialsId: 'aws-access']]) {
-          sh '''
-            aws eks update-kubeconfig \
-              --region $AWS_DEFAULT_REGION \
-              --name $CLUSTER_NAME
-          '''
-        }
-      }
-    }
-
-    stage('Deploy to EKS') {
-      steps {
-        sh '''
-          kubectl apply -f k8s/
-        '''
-      }
-    }
-
-    stage('Verify Pods') {
-      steps {
-        sh '''
-          kubectl get nodes
-          kubectl get pods -A
-          kubectl get svc
-        '''
       }
     }
   }
