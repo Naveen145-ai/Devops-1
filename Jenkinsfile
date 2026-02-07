@@ -76,9 +76,7 @@ pipeline {
 
     stage('Deploy to EKS') {
       steps {
-        sh '''
-          kubectl apply -f k8s/
-        '''
+        sh 'kubectl apply -f k8s/'
       }
     }
 
