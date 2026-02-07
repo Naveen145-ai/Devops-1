@@ -9,13 +9,6 @@ pipeline {
 
   stages {
 
-    stage('Checkout Code') {
-      steps {
-        git credentialsId: 'github-creds',
-            url: 'https://github.com/Naveen145-ai/Devops-1.git'
-      }
-    }
-
     stage('Docker Login') {
       steps {
         withCredentials([usernamePassword(
@@ -76,7 +69,9 @@ pipeline {
 
     stage('Deploy to EKS') {
       steps {
-        sh 'kubectl apply -f k8s/'
+        sh '''
+          kubectl apply -f k8s/
+        '''
       }
     }
 
