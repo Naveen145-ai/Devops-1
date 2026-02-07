@@ -2,8 +2,9 @@ pipeline {
   agent any
 
   environment {
-    DOCKER_USER = "yourdockername"
-    AWS_DEFAULT_REGION = "ap-south-1"
+    DOCKER_USER = "naveen656"
+    AWS_DEFAULT_REGION = "us-east-1"
+    CLUSTER_NAME = "student-eks"
   }
 
   stages {
@@ -11,7 +12,7 @@ pipeline {
     stage('Checkout Code') {
       steps {
         git credentialsId: 'github-creds',
-            url: 'https://github.com/yourname/student-devops-project.git'
+            url: 'https://github.com/Naveen145-ai/Devops-1.git'
       }
     }
 
@@ -32,7 +33,7 @@ pipeline {
     stage('Build & Push Backend') {
       steps {
         sh '''
-          docker build -t $DOCKER_USER/student-backend:latest backend/
+          docker build -t $DOCKER_USER/student-backend:latest backend
           docker push $DOCKER_USER/student-backend:latest
         '''
       }
@@ -41,7 +42,7 @@ pipeline {
     stage('Build & Push Frontend') {
       steps {
         sh '''
-          docker build -t $DOCKER_USER/student-frontend:latest frontend/
+          docker build -t $DOCKER_USER/student-frontend:latest frontend
           docker push $DOCKER_USER/student-frontend:latest
         '''
       }
@@ -50,7 +51,7 @@ pipeline {
     stage('Terraform Init & Apply') {
       steps {
         withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',
-          credentialsId: 'aws-creds']]) {
+          credentialsId: 'aws-access']]) {
           sh '''
             cd terraform
             terraform init
@@ -62,9 +63,14 @@ pipeline {
 
     stage('Update kubeconfig') {
       steps {
-        sh '''
-          aws eks update-kubeconfig --region ap-south-1 --name student-eks
-        '''
+        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',
+          credentialsId: 'aws-access']]) {
+          sh '''
+            aws eks update-kubeconfig \
+              --region $AWS_DEFAULT_REGION \
+              --name $CLUSTER_NAME
+          '''
+        }
       }
     }
 
@@ -80,7 +86,7 @@ pipeline {
       steps {
         sh '''
           kubectl get nodes
-          kubectl get pods
+          kubectl get pods -A
           kubectl get svc
         '''
       }
