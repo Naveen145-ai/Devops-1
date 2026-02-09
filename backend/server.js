@@ -4,6 +4,11 @@ const app = express();
 
 app.use(express.json());
 
+// Health check
+app.get("/", (req, res) => {
+  res.json({ status: "ok" });
+});
+
 // MongoDB connection
 mongoose.connect(process.env.MONGO_URL)
   .then(() => console.log("MongoDB connected"))
