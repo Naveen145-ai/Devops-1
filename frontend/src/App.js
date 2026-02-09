@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const API = "http://BACKEND_SERVICE:5000/students";
+const API = process.env.REACT_APP_API_URL + "/students" || "http://localhost:5000/students";
 
 function App() {
   const [students, setStudents] = useState([]);
