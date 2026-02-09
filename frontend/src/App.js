@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const API = process.env.REACT_APP_API_URL + "/students" || "http://localhost:5000/students";
+const API = "http://a9a123590a4dc4c3ab287764656bb632-63322373.us-east-1.elb.amazonaws.com:5000/students";
 
 function App() {
   const [students, setStudents] = useState([]);
