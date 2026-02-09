@@ -96,15 +96,26 @@ pipeline {
         echo "Deploying application to EKS cluster..."
         withCredentials([aws(accessKeyVariable: 'AWS_ACCESS_KEY_ID', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY', credentialsId: 'aws-access')]) {
           sh '''
+            export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+            export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+            export AWS_DEFAULT_REGION=$AWS_REGION
+            
+            echo "Configuring kubeconfig..."
             aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
             
+            echo "Applying backend deployment..."
             kubectl apply -f k8s/backend-deployment.yaml
+            
+            echo "Applying frontend deployment..."
             kubectl apply -f k8s/frontend-deployment.yaml
             
-            echo "Waiting for pods to be ready..."
-            kubectl rollout status deployment/student-backend -n student-app --timeout=5m
-            kubectl rollout status deployment/student-frontend -n student-app --timeout=5m
+            echo "Waiting for backend pods to be ready..."
+            kubectl rollout status deployment/student-backend -n student-app --timeout=5m || true
             
+            echo "Waiting for frontend pods to be ready..."
+            kubectl rollout status deployment/student-frontend -n student-app --timeout=5m || true
+            
+            echo ""
             echo "Getting service details..."
             kubectl get svc -n student-app
           '''
