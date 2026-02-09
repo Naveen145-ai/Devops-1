@@ -323,34 +323,3 @@ resource "aws_eks_node_group" "student_nodes" {
     Name = "student-node-group"
   }
 }
-
-# -------------------
-# Outputs
-# -------------------
-output "eks_cluster_name" {
-  description = "Name of the EKS cluster"
-  value       = aws_eks_cluster.student_cluster.name
-}
-
-output "eks_cluster_endpoint" {
-  description = "Endpoint of the EKS cluster"
-  value       = aws_eks_cluster.student_cluster.endpoint
-}
-
-output "eks_cluster_security_group_id" {
-  description = "Security group ID of the EKS cluster"
-  value       = aws_security_group.eks_control_plane.id
-}
-
-output "eks_node_group_id" {
-  description = "EKS node group ID"
-  value       = aws_eks_node_group.student_nodes.id
-}
-    nodes = {
-      desired_size   = 2
-      min_size       = 1
-      max_size       = 2
-      instance_types = ["t3.medium"]
-    }
-  }
-}
