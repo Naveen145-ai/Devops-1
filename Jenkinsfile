@@ -3,64 +3,128 @@ pipeline {
 
   environment {
     DOCKER_USER = "naveen656"
-    EC2_HOST = "your-ec2-ip-or-hostname"
-    EC2_USER = "ec2-user"
+    AWS_REGION = "us-east-1"
+    EKS_CLUSTER_NAME = "student-eks"
+    AWS_ACCOUNT_ID = "312320185931"
   }
 
   stages {
+    stage('Checkout') {
+      steps {
+        echo "Checking out code..."
+        checkout scm
+      }
+    }
 
     stage('Docker Login') {
       steps {
-        withCredentials([usernamePassword(
-          credentialsId: 'dockerhub-creds',
-          usernameVariable: 'DOCKER_USERNAME',
-          passwordVariable: 'DOCKER_PASSWORD'
-        )]) {
-          sh '''
-            echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
-          '''
+        script {
+          echo "Logging into Docker Hub..."
+          withCredentials([usernamePassword(
+            credentialsId: 'dockerhub-creds',
+            usernameVariable: 'DOCKER_USERNAME',
+            passwordVariable: 'DOCKER_PASSWORD'
+          )]) {
+            sh '''
+              echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+            '''
+          }
         }
       }
     }
 
-    stage('Build & Push Backend') {
+    stage('Build Backend Image') {
       steps {
+        echo "Building backend Docker image..."
         sh '''
-          docker build -t $DOCKER_USER/student-backend:latest backend
+          docker build -t $DOCKER_USER/student-backend:latest ./backend
+          docker tag $DOCKER_USER/student-backend:latest $DOCKER_USER/student-backend:v1.0
+        '''
+      }
+    }
+
+    stage('Build Frontend Image') {
+      steps {
+        echo "Building frontend Docker image..."
+        sh '''
+          docker build -t $DOCKER_USER/student-frontend:latest ./frontend
+          docker tag $DOCKER_USER/student-frontend:latest $DOCKER_USER/student-frontend:v1.0
+        '''
+      }
+    }
+
+    stage('Push Images to Docker Hub') {
+      steps {
+        echo "Pushing images to Docker Hub..."
+        sh '''
           docker push $DOCKER_USER/student-backend:latest
-        '''
-      }
-    }
-
-    stage('Build & Push Frontend') {
-      steps {
-        sh '''
-          docker build -t $DOCKER_USER/student-frontend:latest frontend
+          docker push $DOCKER_USER/student-backend:v1.0
           docker push $DOCKER_USER/student-frontend:latest
+          docker push $DOCKER_USER/student-frontend:v1.0
         '''
       }
     }
 
-    stage('Deploy to EC2') {
+    stage('Create EKS Cluster') {
       steps {
-        withCredentials([sshUserPrivateKey(
-          credentialsId: 'ec2-ssh-key',
-          keyFileVariable: 'SSH_KEY'
-        )]) {
+        echo "Creating EKS cluster using Terraform..."
+        withCredentials([aws(accessKeyVariable: 'AWS_ACCESS_KEY_ID', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY', credentialsId: 'aws-access')]) {
           sh '''
-            ssh -i $SSH_KEY -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST << 'EOF'
-              docker pull $DOCKER_USER/student-backend:latest
-              docker pull $DOCKER_USER/student-frontend:latest
-              docker stop backend-container || true
-              docker stop frontend-container || true
-              docker rm backend-container || true
-              docker rm frontend-container || true
-              docker run -d --name backend-container -p 5000:5000 $DOCKER_USER/student-backend:latest
-              docker run -d --name frontend-container -p 80:80 $DOCKER_USER/student-frontend:latest
-            EOF
+            cd terraform
+            terraform init
+            terraform plan -out=tfplan
+            terraform apply tfplan
+            cd ..
           '''
         }
       }
+    }
+
+    stage('Configure kubectl') {
+      steps {
+        echo "Configuring kubectl to access EKS cluster..."
+        withCredentials([aws(accessKeyVariable: 'AWS_ACCESS_KEY_ID', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY', credentialsId: 'aws-access')]) {
+          sh '''
+            aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
+          '''
+        }
+      }
+    }
+
+    stage('Deploy to EKS') {
+      steps {
+        echo "Deploying application to EKS cluster..."
+        sh '''
+          kubectl apply -f k8s/backend-deployment.yaml
+          kubectl apply -f k8s/frontend-deployment.yaml
+          
+          echo "Waiting for pods to be ready..."
+          kubectl rollout status deployment/student-backend -n student-app --timeout=5m
+          kubectl rollout status deployment/student-frontend -n student-app --timeout=5m
+          
+          echo "Getting service details..."
+          kubectl get svc -n student-app
+        '''
+      }
+    }
+  }
+
+  post {
+    always {
+      echo "Pipeline execution completed"
+      sh 'docker logout || true'
+    }
+    success {
+      echo "Deployment to EKS successful!"
+      sh '''
+        echo "Backend Service: kubectl get svc backend-service -n student-app"
+        echo "Frontend Service: kubectl get svc frontend-service -n student-app"
+        echo "\nFrontend External IP (might take 1-2 minutes to appear):"
+        kubectl get svc frontend-service -n student-app --no-headers | awk '{print $4}'
+      '''
+    }
+    failure {
+      echo "Pipeline failed! Check logs above."
     }
   }
 }
