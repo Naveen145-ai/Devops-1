@@ -94,17 +94,21 @@ pipeline {
     stage('Deploy to EKS') {
       steps {
         echo "Deploying application to EKS cluster..."
-        sh '''
-          kubectl apply -f k8s/backend-deployment.yaml
-          kubectl apply -f k8s/frontend-deployment.yaml
-          
-          echo "Waiting for pods to be ready..."
-          kubectl rollout status deployment/student-backend -n student-app --timeout=5m
-          kubectl rollout status deployment/student-frontend -n student-app --timeout=5m
-          
-          echo "Getting service details..."
-          kubectl get svc -n student-app
-        '''
+        withCredentials([aws(accessKeyVariable: 'AWS_ACCESS_KEY_ID', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY', credentialsId: 'aws-access')]) {
+          sh '''
+            aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
+            
+            kubectl apply -f k8s/backend-deployment.yaml
+            kubectl apply -f k8s/frontend-deployment.yaml
+            
+            echo "Waiting for pods to be ready..."
+            kubectl rollout status deployment/student-backend -n student-app --timeout=5m
+            kubectl rollout status deployment/student-frontend -n student-app --timeout=5m
+            
+            echo "Getting service details..."
+            kubectl get svc -n student-app
+          '''
+        }
       }
     }
   }
