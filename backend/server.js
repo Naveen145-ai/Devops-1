@@ -35,30 +35,46 @@ const Student = mongoose.model("Student", StudentSchema);
 
 // CREATE
 app.post("/students", async (req, res) => {
-  const student = await Student.create(req.body);
-  res.json(student);
+  try {
+    const student = await Student.create(req.body);
+    res.json(student);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // READ
 app.get("/students", async (req, res) => {
-  const students = await Student.find();
-  res.json(students);
+  try {
+    const students = await Student.find();
+    res.json(students);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // UPDATE
 app.put("/students/:id", async (req, res) => {
-  const student = await Student.findByIdAndUpdate(
-    req.params.id,
-    req.body,
-    { new: true }
-  );
-  res.json(student);
+  try {
+    const student = await Student.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
+    res.json(student);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // DELETE
 app.delete("/students/:id", async (req, res) => {
-  await Student.findByIdAndDelete(req.params.id);
-  res.send("Deleted");
+  try {
+    await Student.findByIdAndDelete(req.params.id);
+    res.send("Deleted");
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.listen(5000, '0.0.0.0', () => console.log("Backend running on 5000"));

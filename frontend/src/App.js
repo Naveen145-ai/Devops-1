@@ -16,7 +16,7 @@ function App() {
     await fetch(API, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, age })
+      body: JSON.stringify({ name, age: parseInt(age) })
     });
     setName("");
     setAge("");
