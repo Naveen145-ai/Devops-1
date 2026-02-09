@@ -4,7 +4,7 @@ pipeline {
   environment {
     DOCKER_USER = "naveen656"
     AWS_REGION = "us-east-1"
-    EKS_CLUSTER_NAME = "student-eks"
+    EKS_CLUSTER_NAME = "student-eks-new"
     AWS_ACCOUNT_ID = "312320185931"
   }
 

@@ -37,7 +37,7 @@ variable "private_subnet_az2" {
 variable "eks_cluster_name" {
   description = "EKS cluster name"
   type        = string
-  default     = "student-eks"
+  default     = "student-eks-new"
 }
 
 variable "kubernetes_version" {
